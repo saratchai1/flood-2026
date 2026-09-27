@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Longdo Events Map</title>
+    <title>🌊 แผนที่เหตุการณ์ Longdo - สถานการณ์น้ำท่วมและจราจร</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <style>
+        * { box-sizing: border-box; }
         body { 
             margin: 0; 
             padding: 0; 
@@ -20,89 +21,447 @@
             width: 100vw; 
             height: 100vh; 
         }
-        .popup-content h3 { 
-            margin-top: 0; 
-            margin-bottom: 8px;
-            color: #d32f2f;
-            font-size: 16px;
-        }
-        .popup-content p {
-            margin: 5px 0;
+
+        /* ── Filter Panel (top-right) ── */
+        .filter-panel {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.96);
+            border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+            min-width: 200px;
             font-size: 14px;
         }
-        .popup-content small {
-            color: #666;
+        .filter-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            color: #333;
         }
-        .type-flood { color: #0288d1 !important; }
-        .type-accident { color: #d32f2f !important; }
-        .type-breakdown { color: #f57c00 !important; }
+        .filter-panel label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .filter-panel label:hover {
+            background: #f5f5f5;
+            border-radius: 6px;
+            padding-left: 4px;
+            margin-left: -4px;
+        }
+        .filter-panel input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #333;
+        }
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+        .filter-panel .count {
+            color: #999;
+            font-size: 12px;
+            margin-left: auto;
+        }
+        .filter-divider {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 10px 0;
+        }
+
+        /* ── Time Filter (top-left) ── */
+        .time-panel {
+            position: absolute;
+            top: 12px;
+            left: 56px;
+            z-index: 1000;
+            background: rgba(255,255,255,0.96);
+            border-radius: 12px;
+            padding: 14px 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+            font-size: 14px;
+        }
+        .time-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            color: #333;
+        }
+        .time-panel label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        .time-panel input[type="radio"] {
+            accent-color: #333;
+        }
+
+        /* ── Summary Bar (bottom) ── */
+        .summary-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(33,33,33,0.92);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 10px 20px;
+            font-size: 14px;
+            flex-wrap: wrap;
+        }
+        .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .summary-item .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .summary-item .num {
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .summary-update {
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        /* ── Legend for opacity ── */
+        .legend-note {
+            font-size: 11px;
+            color: #888;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        .legend-note span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 3px;
+        }
+
+        /* ── Popup styling ── */
+        .popup-card {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-width: 220px;
+            max-width: 300px;
+        }
+        .popup-card .popup-header {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .popup-card .popup-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        .popup-card .popup-desc {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .popup-card .popup-meta {
+            font-size: 12px;
+            color: #777;
+            line-height: 1.8;
+        }
+        .popup-card .popup-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .popup-card .status-active {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .popup-card .status-expired {
+            background: #fce4ec;
+            color: #c62828;
+        }
+        .popup-card hr {
+            border: none;
+            border-top: 1px solid #eee;
+            margin: 6px 0;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <!-- Time Filter Panel -->
+    <div class="time-panel" id="timePanel">
+        <h3>🕐 แสดงข้อมูล</h3>
+        <label><input type="radio" name="timeFilter" value="all" checked> ทั้งหมด</label>
+        <label><input type="radio" name="timeFilter" value="1"> ภายใน 1 ชม.</label>
+        <label><input type="radio" name="timeFilter" value="3"> ภายใน 3 ชม.</label>
+        <label><input type="radio" name="timeFilter" value="6"> ภายใน 6 ชม.</label>
+        <label><input type="radio" name="timeFilter" value="today"> วันนี้</label>
+    </div>
+
+    <!-- Type Filter Panel -->
+    <div class="filter-panel" id="filterPanel">
+        <h3>📋 กรองประเภท</h3>
+        <label>
+            <input type="checkbox" value="flood" checked>
+            <span class="color-dot" style="background:#e53935;"></span>
+            🌊 น้ำท่วม
+            <span class="count" id="count-flood">0</span>
+        </label>
+        <label>
+            <input type="checkbox" value="carbreakdown" checked>
+            <span class="color-dot" style="background:#fb8c00;"></span>
+            🚗 รถเสีย
+            <span class="count" id="count-carbreakdown">0</span>
+        </label>
+        <label>
+            <input type="checkbox" value="accident" checked>
+            <span class="color-dot" style="background:#fdd835;"></span>
+            💥 อุบัติเหตุ
+            <span class="count" id="count-accident">0</span>
+        </label>
+        <label>
+            <input type="checkbox" value="other" checked>
+            <span class="color-dot" style="background:#1e88e5;"></span>
+            📍 อื่นๆ
+            <span class="count" id="count-other">0</span>
+        </label>
+        <hr class="filter-divider">
+        <div class="legend-note">
+            <span style="background:#e53935;"></span> ทึบ = ยังเป็นปัจจุบัน<br>
+            <span style="background:#e53935; opacity:0.35;"></span> จาง = หมดอายุแล้ว
+        </div>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="summary-bar" id="summaryBar">
+        <div class="summary-item">
+            <span class="dot" style="background:#e53935;"></span>
+            🌊 น้ำท่วม <span class="num" id="sum-flood">0</span> จุด
+        </div>
+        <div class="summary-item">
+            <span class="dot" style="background:#fb8c00;"></span>
+            🚗 รถเสีย <span class="num" id="sum-carbreakdown">0</span> จุด
+        </div>
+        <div class="summary-item">
+            <span class="dot" style="background:#fdd835;"></span>
+            💥 อุบัติเหตุ <span class="num" id="sum-accident">0</span> จุด
+        </div>
+        <div class="summary-item">
+            <span class="dot" style="background:#1e88e5;"></span>
+            📍 อื่นๆ <span class="num" id="sum-other">0</span> จุด
+        </div>
+        <div class="summary-update" id="summaryUpdate"></div>
+    </div>
+
     <script>
-        // Initialize the map, default center on Bangkok
-        var map = L.map('map').setView([13.7563, 100.5018], 10);
-        
-        // Add Google Maps tiles (No API key required for this tile endpoint)
+        // ── Config ──
+        const TYPE_CONFIG = {
+            flood:        { color: '#e53935', radius: 12, label: '🌊 น้ำท่วม',    border: '#b71c1c' },
+            carbreakdown: { color: '#fb8c00', radius: 9,  label: '🚗 รถเสีย',     border: '#e65100' },
+            accident:     { color: '#fdd835', radius: 9,  label: '💥 อุบัติเหตุ',  border: '#f9a825' },
+            other:        { color: '#1e88e5', radius: 7,  label: '📍 อื่นๆ',       border: '#1565c0' }
+        };
+
+        // ── State ──
+        let allEvents = [];
+        let allMarkers = [];  // { marker, event, type }
+        const now = new Date();
+
+        // ── Map init ──
+        var map = L.map('map', { zoomControl: false }).setView([13.7563, 100.5018], 10);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
         L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 19,
             attribution: '&copy; Google Maps'
         }).addTo(map);
 
-        // Fetch data from the Longdo feed
-        const feedUrl = "https://event.longdo.com/feed/json?fbclid=IwY2xjawUlhdZleHRuA2FlbQIxMABwZG9mBWJyaWQRMUFXejRRdzBOVU1NUGFKcE5zcnRjBmFwcF9pZBAyMjIwMzkxNzg4MjAwODkyAAEeaVHPSzLbu5S1SZhUdBP6xFWFmXKGLd8smxATGroGDD5kz-TYx0_MOA8a0Fo_aem_Y1PoC3iRRSRT9GarmZKcnA";
-        
+        // ── Helpers ──
+        function getEventType(icon) {
+            if (icon === 'flood') return 'flood';
+            if (icon === 'carbreakdown') return 'carbreakdown';
+            if (icon === 'accident') return 'accident';
+            return 'other';
+        }
+
+        function parseDate(str) {
+            if (!str) return null;
+            // "2026-09-27 12:12:00"
+            return new Date(str.replace(' ', 'T') + '+07:00');
+        }
+
+        function isExpired(event) {
+            const stop = parseDate(event.stop);
+            return stop ? stop < now : false;
+        }
+
+        function relativeTime(dateStr) {
+            const d = parseDate(dateStr);
+            if (!d) return '-';
+            const diffMs = now - d;
+            const diffMin = Math.floor(Math.abs(diffMs) / 60000);
+            if (diffMin < 1) return 'เมื่อสักครู่';
+            if (diffMin < 60) return diffMin + ' นาทีที่แล้ว';
+            const diffHr = Math.floor(diffMin / 60);
+            if (diffHr < 24) return diffHr + ' ชั่วโมงที่แล้ว';
+            return Math.floor(diffHr / 24) + ' วันที่แล้ว';
+        }
+
+        function formatTime(dateStr) {
+            const d = parseDate(dateStr);
+            if (!d) return '-';
+            return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function passesTimeFilter(event) {
+            const selected = document.querySelector('input[name="timeFilter"]:checked').value;
+            if (selected === 'all') return true;
+            const start = parseDate(event.start);
+            if (!start) return true;
+            if (selected === 'today') {
+                const todayStart = new Date(now);
+                todayStart.setHours(0, 0, 0, 0);
+                return start >= todayStart;
+            }
+            const hours = parseInt(selected);
+            const cutoff = new Date(now.getTime() - hours * 60 * 60 * 1000);
+            return start >= cutoff;
+        }
+
+        function getActiveTypes() {
+            const checks = document.querySelectorAll('#filterPanel input[type="checkbox"]');
+            const active = new Set();
+            checks.forEach(c => { if (c.checked) active.add(c.value); });
+            return active;
+        }
+
+        // ── Build popup ──
+        function buildPopup(event, type) {
+            const cfg = TYPE_CONFIG[type];
+            const expired = isExpired(event);
+            const statusHtml = expired
+                ? '<span class="popup-status status-expired">🔴 หมดอายุแล้ว</span>'
+                : '<span class="popup-status status-active">🟢 ยังเป็นปัจจุบัน</span>';
+
+            return `
+                <div class="popup-card">
+                    <div class="popup-header" style="color:${cfg.color}">${cfg.label}</div>
+                    <div class="popup-title">${event.title || ''}</div>
+                    <hr>
+                    <div class="popup-desc">${event.description || ''}</div>
+                    <hr>
+                    <div class="popup-meta">
+                        🕐 เริ่ม: ${formatTime(event.start)} (${relativeTime(event.start)})<br>
+                        ⏳ สิ้นสุด: ${formatTime(event.stop)}<br>
+                        📡 รายงานโดย: ${event.contributor || '-'}<br>
+                        ${statusHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── Render markers ──
+        function renderMarkers() {
+            // Remove old markers
+            allMarkers.forEach(m => map.removeLayer(m.marker));
+            allMarkers = [];
+
+            const activeTypes = getActiveTypes();
+            const counts = { flood: 0, carbreakdown: 0, accident: 0, other: 0 };
+            const visibleCounts = { flood: 0, carbreakdown: 0, accident: 0, other: 0 };
+            let bounds = [];
+
+            allEvents.forEach(event => {
+                if (!event.latitude || !event.longitude) return;
+                const type = getEventType(event.icon);
+                counts[type]++;
+
+                if (!passesTimeFilter(event)) return;
+                if (!activeTypes.has(type)) return;
+
+                visibleCounts[type]++;
+                const cfg = TYPE_CONFIG[type];
+                const lat = parseFloat(event.latitude);
+                const lng = parseFloat(event.longitude);
+                const expired = isExpired(event);
+
+                const marker = L.circleMarker([lat, lng], {
+                    radius: cfg.radius,
+                    fillColor: cfg.color,
+                    color: cfg.border,
+                    weight: 2,
+                    opacity: expired ? 0.4 : 1,
+                    fillOpacity: expired ? 0.25 : 0.85
+                }).addTo(map);
+
+                marker.bindPopup(buildPopup(event, type), { maxWidth: 320 });
+                allMarkers.push({ marker, event, type });
+                bounds.push([lat, lng]);
+            });
+
+            // Update counts in filter panel
+            Object.keys(counts).forEach(t => {
+                document.getElementById('count-' + t).textContent = counts[t];
+            });
+
+            // Update summary bar
+            Object.keys(visibleCounts).forEach(t => {
+                document.getElementById('sum-' + t).textContent = visibleCounts[t];
+            });
+            document.getElementById('summaryUpdate').textContent =
+                '🔄 อัพเดท: ' + now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+
+            // Fit bounds on first load
+            if (bounds.length > 0 && !window._initialFit) {
+                map.fitBounds(bounds, { padding: [40, 40] });
+                window._initialFit = true;
+            }
+        }
+
+        // ── Event listeners ──
+        document.querySelectorAll('#filterPanel input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', renderMarkers);
+        });
+        document.querySelectorAll('input[name="timeFilter"]').forEach(r => {
+            r.addEventListener('change', renderMarkers);
+        });
+
+        // ── Fetch & Go ──
+        const feedUrl = "https://event.longdo.com/feed/json";
+
         fetch(feedUrl)
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
-                let bounds = [];
-                
-                data.forEach(event => {
-                    if (event.latitude && event.longitude) {
-                        let lat = parseFloat(event.latitude);
-                        let lng = parseFloat(event.longitude);
-                        
-                        let marker = L.marker([lat, lng]).addTo(map);
-                        
-                        // Format icon and styling based on event type
-                        let iconHtml = '';
-                        let typeClass = '';
-                        if (event.icon === 'flood') {
-                            iconHtml = '🌊 น้ำท่วม';
-                            typeClass = 'type-flood';
-                        } else if (event.icon === 'carbreakdown') {
-                            iconHtml = '🚗 รถเสีย';
-                            typeClass = 'type-breakdown';
-                        } else if (event.icon === 'accident') {
-                            iconHtml = '💥 อุบัติเหตุ';
-                            typeClass = 'type-accident';
-                        } else {
-                            iconHtml = '📍 ' + event.title;
-                        }
-                        
-                        let popupHtml = `
-                            <div class="popup-content">
-                                <h3 class="${typeClass}">${iconHtml}</h3>
-                                <strong>${event.title}</strong>
-                                <p>${event.description || ''}</p>
-                                <small>เวลา: ${event.start || '-'} ถึง ${event.stop || '-'}</small>
-                            </div>
-                        `;
-                        
-                        marker.bindPopup(popupHtml);
-                        bounds.push([lat, lng]);
-                    }
-                });
-                
-                // Adjust map to show all markers
-                if (bounds.length > 0) {
-                    map.fitBounds(bounds);
-                }
+                allEvents = data;
+                renderMarkers();
             })
-            .catch(error => {
-                console.error("Error fetching data:", error);
-                alert("เกิดข้อผิดพลาดในการโหลดข้อมูลจาก Longdo");
+            .catch(err => {
+                console.error("Error fetching data:", err);
+                document.getElementById('summaryUpdate').textContent = '⚠️ โหลดข้อมูลไม่สำเร็จ';
             });
     </script>
 </body>
