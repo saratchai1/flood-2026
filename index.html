@@ -280,10 +280,10 @@
     <script>
         // ── Config ──
         const TYPE_CONFIG = {
-            flood:        { color: '#e53935', radius: 12, label: '🌊 น้ำท่วม',    border: '#b71c1c' },
-            carbreakdown: { color: '#fb8c00', radius: 9,  label: '🚗 รถเสีย',     border: '#e65100' },
-            accident:     { color: '#fdd835', radius: 9,  label: '💥 อุบัติเหตุ',  border: '#f9a825' },
-            other:        { color: '#1e88e5', radius: 7,  label: '📍 อื่นๆ',       border: '#1565c0' }
+            flood:        { color: '#e53935', label: '🌊 น้ำท่วม',    emoji: '🌊' },
+            carbreakdown: { color: '#fb8c00', label: '🚗 รถเสีย',     emoji: '🚗' },
+            accident:     { color: '#fdd835', label: '💥 อุบัติเหตุ',  emoji: '💥' },
+            other:        { color: '#1e88e5', label: '📍 อื่นๆ',       emoji: '📍' }
         };
 
         // ── State ──
@@ -409,14 +409,32 @@
                 const lng = parseFloat(event.longitude);
                 const expired = isExpired(event);
 
-                const marker = L.circleMarker([lat, lng], {
-                    radius: cfg.radius,
-                    fillColor: cfg.color,
-                    color: cfg.border,
-                    weight: 2,
-                    opacity: expired ? 0.4 : 1,
-                    fillOpacity: expired ? 0.25 : 0.85
-                }).addTo(map);
+                // Use a large prominent div icon instead of a small circle
+                const iconHtml = `
+                    <div style="
+                        background-color: ${cfg.color};
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 50%;
+                        border: 2px solid white;
+                        box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 14px;
+                        opacity: ${expired ? 0.4 : 1};
+                    ">${cfg.emoji}</div>
+                `;
+
+                const customIcon = L.divIcon({
+                    html: iconHtml,
+                    className: 'custom-pin',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -16]
+                });
+
+                const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
 
                 marker.bindPopup(buildPopup(event, type), { maxWidth: 320 });
                 allMarkers.push({ marker, event, type });
